@@ -1,0 +1,23 @@
+# --- NYAWA ---
+.env
+.env.local
+
+# --- Dependencies ---
+node_modules/
+
+# --- Hardhat Output (File Sampah) ---
+/artifacts
+/cache
+/dist
+/typechain-types
+/coverage
+
+# --- IDE & System (Settingan Laptop) ---
+.DS_Store
+.vscode/
+.idea/
+
+# --- Yarn/NPM Logs ---
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
