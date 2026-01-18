@@ -13,7 +13,7 @@ import { injected } from 'wagmi/connectors';
 
 
 // config
-const CONTRACT_ADDRESS = '0x6987850a3653961e10842498b0b191020a1f3829'; 
+const CONTRACT_ADDRESS = '0xf2807b29126b795c82268d3a9b6b63d034c12d64'; 
 const SIMPLE_STORAGE_ABI = [
   {
     inputs: [],
