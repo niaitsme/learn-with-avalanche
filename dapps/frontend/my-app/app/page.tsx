@@ -6,8 +6,9 @@ import {
   useConnect, 
   useDisconnect, 
   useBalance,
-  useReadContract,   // Tambahan
-  useWriteContract   // Tambahan
+  useReadContract, 
+  useWriteContract,
+  useWaitForTransactionReceipt
 } from 'wagmi';
 import { injected } from 'wagmi/connectors';
 
@@ -34,21 +35,42 @@ const SIMPLE_STORAGE_ABI = [
 export default function Home() {
   const { address, isConnected } = useAccount();
   const { connect, isPending } = useConnect();
-  const { data: balance } = useBalance({ address });
+  
+  const { data: balance, refetch: refetchBalance } = useBalance({ 
+    address,
+    query: {
+      refetchInterval: 1000, 
+    }
+  });
+  
   const { disconnect } = useDisconnect();
 
-  // --- READ & WRITE ---
   const [inputValue, setInputValue] = useState('');
 
-  // Read
   const { data: value, isLoading: isReading, refetch } = useReadContract({
     address: CONTRACT_ADDRESS as `0x${string}`,
     abi: SIMPLE_STORAGE_ABI,
     functionName: 'getValue',
   });
 
-  // Write
-  const { writeContract, isPending: isWriting } = useWriteContract();
+  const { 
+    data: hash, 
+    writeContract, 
+    isPending: isWriting 
+  } = useWriteContract();
+
+  const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
+    hash,
+  });
+
+  useEffect(() => {
+    if (isConfirmed) {
+      refetch(); 
+      refetchBalance(); 
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setInputValue(''); 
+    }
+  }, [isConfirmed, refetch, refetchBalance]);
 
   const handleSetValue = async () => {
     if (!inputValue) return;
@@ -89,7 +111,6 @@ export default function Home() {
         ) : (
           <div className="space-y-4">
 
-            {/* data wallet */}
             <div className="bg-white/10 p-4 rounded-xl border border-white/20">
               <div className="flex items-center justify-between mb-2">
                 <span className="font-bold text-pink-100">Status:</span>
@@ -111,20 +132,18 @@ export default function Home() {
               <div>
                  <span className="text-xs text-pink-200 block">Balance:</span>
                  <span className="text-sm font-bold">
-                    {balance ? `${(Number(balance.value) / 10 ** balance.decimals).toFixed(6)} ${balance.symbol}` : 'Loading...'}
+                    {balance ? `${(Number(balance.value) / 10 ** balance.decimals).toFixed(12)} ${balance.symbol}` : 'Loading...'}
                  </span>
               </div>
             </div>
 
-            {/* fitur baru */}
             <div className="bg-white/10 p-4 rounded-xl border border-white/20 space-y-4">
-                {/* read */}
                 <div className="text-center border-b border-white/10 pb-4">
                     <p className="text-xs text-pink-200 mb-1">Stored Value:</p>
                     {isReading ? (
                         <p className="text-sm animate-pulse">Loading...</p>
                     ) : (
-                        <h2 className="text-3xl font-bold text-yellow-300 drop-shadow-sm">
+                        <h2 className="text-3xl font-bold text-yellow-300 drop-shadow-sm transition-all duration-500">
                             {value?.toString() || "0"}
                         </h2>
                     )}
@@ -133,7 +152,6 @@ export default function Home() {
                     </button>
                 </div>
 
-                {/* write */}
                 <div>
                     <p className="text-xs text-pink-200 mb-2">Update Value:</p>
                     <div className="flex gap-2">
@@ -142,20 +160,25 @@ export default function Home() {
                             placeholder="123..." 
                             value={inputValue}
                             onChange={(e) => setInputValue(e.target.value)}
-                            className="w-full bg-black/20 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-white/50 focus:outline-none focus:border-pink-400 transition text-sm"
+                            disabled={isWriting || isConfirming}
+                            className="w-full bg-black/20 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-white/50 focus:outline-none focus:border-pink-400 transition text-sm disabled:opacity-50"
                         />
                         <button 
                             onClick={handleSetValue}
-                            disabled={isWriting}
-                            className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-4 py-2 rounded-lg transition shadow-lg text-sm"
+                            disabled={isWriting || isConfirming || !inputValue}
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-4 py-2 rounded-lg transition shadow-lg text-sm disabled:bg-gray-500 disabled:cursor-not-allowed"
                         >
-                            {isWriting ? '...' : 'Send 🚀'}
+                            {isWriting ? 'Sign...' : 
+                             isConfirming ? 'Mining...' : 
+                             'Send 🚀'}
                         </button>
                     </div>
+                    
+                    {isConfirming && <p className="text-xs text-yellow-300 mt-1 animate-pulse">⏳ Tunggu bentar, lagi proses...</p>}
+                    {isConfirmed && <p className="text-xs text-green-300 mt-1 font-bold">✅ Sukses! Data update.</p>}
                 </div>
             </div>
 
-            {/* disconnect */}
             <button
               onClick={() => disconnect()}
               className="w-full bg-red-500/80 hover:bg-red-600 text-white font-bold py-2 rounded-lg transition-all text-sm"
@@ -165,7 +188,6 @@ export default function Home() {
             
             <div className="border-t border-white/20 my-4"></div>
 
-            {/* identitas */}
             <div className="text-center">
               <p className="text-xs text-pink-200 mb-1">Created by:</p>
               <p className="font-bold text-lg text-white drop-shadow-sm">Dwi Kurniasih</p>
